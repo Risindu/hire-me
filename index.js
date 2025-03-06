@@ -1,7 +1,8 @@
 import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
-import AWS from 'aws-sdk';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import dotenv from 'dotenv';
 import pdf from 'pdf-parse';
 import { google } from 'googleapis';
@@ -13,7 +14,7 @@ import schedule from 'node-schedule';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Use Render's PORT or fallback to 3000
 
 app.use(cors());
 app.use(express.json()); // To parse JSON request bodies
@@ -22,10 +23,13 @@ app.use(express.urlencoded({ extended: true })); // To parse URL-encoded request
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+// Configure AWS S3 Client (v3)
+const s3 = new S3Client({
   region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
 // Configure Google Sheets API
@@ -80,7 +84,7 @@ function scheduleFollowUpEmail(email, name) {
   date.setDate(date.getDate() + 1);
   date.setHours(10, 0, 0); // 10 AM
 
-  schedule.scheduleJob(date, function() {
+  schedule.scheduleJob(date, function () {
     sendFollowUpEmail(email, name);
   });
 }
@@ -121,12 +125,17 @@ app.post('/parse-cv', upload.single('cv'), async (req, res) => {
       ContentType: req.file.mimetype,
     };
 
-    const s3UploadResponse = await s3.upload(params).promise();
-    const preSignedUrl = s3.getSignedUrl('getObject', {
+    const command = new PutObjectCommand(params);
+    await s3.send(command);
+
+    // Generate a pre-signed URL
+    const getObjectParams = {
       Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: params.Key,
-      Expires: 3600,
-    });
+    };
+
+    const getObjectCommand = new GetObjectCommand(getObjectParams);
+    const preSignedUrl = await getSignedUrl(s3, getObjectCommand, { expiresIn: 3600 });
 
     // Store data in Google Sheets
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
