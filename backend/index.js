@@ -14,7 +14,7 @@ import schedule from 'node-schedule';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Use Render's PORT or fallback to 3000
+const PORT = process.env.PORT || 3000; // Use Render's PORT or fallback to 3000
 
 app.use(cors());
 app.use(express.json()); // To parse JSON request bodies
@@ -100,7 +100,7 @@ app.post('/parse-cv', upload.single('cv'), async (req, res) => {
     const { name, email, phone } = req.body;
 
     // Check if the test PDF file exists
-    const testPdfPath = 'D:/Metana/Task/backend/test/data/05-versions-space.pdf';
+    const testPdfPath = './test/data/05-versions-space.pdf';
     if (!fs.existsSync(testPdfPath)) {
       return res.status(404).json({ error: 'Test PDF file not found' });
     }
