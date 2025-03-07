@@ -135,7 +135,7 @@ app.post('/parse-cv', upload.single('cv'), async (req, res) => {
     };
 
     const getObjectCommand = new GetObjectCommand(getObjectParams);
-    const preSignedUrl = await getSignedUrl(s3, getObjectCommand, { expiresIn: 3600 });
+    const preSignedUrl = await getSignedUrl(s3, getObjectCommand, { expiresIn: 518400 }); //Expires in 6 days
 
     // Store data in Google Sheets
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
@@ -176,7 +176,7 @@ app.post('/parse-cv', upload.single('cv'), async (req, res) => {
       metadata: {
         applicant_name: name, // Use the name from the frontend request
         email: email, // Use the email from the frontend request
-        status: "testing", // Change to "prod" for final submissions
+        status: "prod", // Change to "prod" for final submissions
         cv_processed: true,
         processed_timestamp: new Date().toISOString(),
       },
